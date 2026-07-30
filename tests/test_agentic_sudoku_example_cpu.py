@@ -220,6 +220,14 @@ def test_reward_replay_separates_success_partial_invalid_and_empty_paths():
     assert summary["easy"]["invalid_action_rate"] > 0
 
 
+def test_reward_loads_through_runtime_file_loader():
+    from areno.api.rewards import load_reward_fn
+
+    loaded = load_reward_fn(str(EXAMPLE_DIR / "reward.py"))
+
+    assert callable(loaded)
+
+
 def test_reward_penalizes_repeated_state_actions_and_multi_call_turns():
     reward = _load_module("reward")
     source = _record()
