@@ -167,6 +167,23 @@ def test_generator_is_reproducible_balanced_diverse_and_uniquely_solvable():
         assert record["solver_search_overhead"] == stats.visited_nodes - (record["puzzle"].count("0") + 1)
 
 
+def test_curriculum_generator_produces_short_unique_reproducible_puzzles():
+    game = _load_module("game")
+    generator = _load_module("curriculum_generator")
+
+    records = generator.generate_curriculum_records(6, seed=17, empty_cells=3, max_actions=8)
+
+    assert records == generator.generate_curriculum_records(6, seed=17, empty_cells=3, max_actions=8)
+    assert len({record["puzzle_hash"] for record in records}) == 6
+    assert len({record["solution_hash"] for record in records}) == 6
+    for record in records:
+        assert record["difficulty_method"] == "curriculum_empty_cells_v1"
+        assert record["curriculum_empty_cells"] == 3
+        assert record["puzzle"].count("0") == 3
+        assert record["max_actions"] == 8
+        assert game.count_solutions(record["puzzle"], limit=2) == 1
+
+
 def test_loader_validates_records_and_never_exposes_solution():
     generator = _load_module("dataset_generator")
     loader = _load_module("dataset_loader")
@@ -193,6 +210,11 @@ def test_loader_validates_records_and_never_exposes_solution():
         assert "puzzle_hash" in str(exc)
     else:
         raise AssertionError("tampered generated metadata was accepted")
+
+    curriculum_generator = _load_module("curriculum_generator")
+    curriculum = curriculum_generator.generate_curriculum_records(1, seed=23)
+    loaded_curriculum = loader.load_training_dataset("unused", default_loader=lambda _: curriculum)
+    assert loaded_curriculum[0]["puzzle"].count("0") == 3
 
 
 def test_reward_replay_separates_success_partial_invalid_and_empty_paths():

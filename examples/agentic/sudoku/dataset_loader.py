@@ -91,7 +91,18 @@ def _validate_generated_metadata(
     clue_count = sum(cell != "0" for cell in puzzle)
     if "clue_count" in record and record["clue_count"] != clue_count:
         raise ValueError(f"Sudoku record {record_id} clue_count does not match its puzzle")
-    if record.get("difficulty_method") != "clue_count_and_uniqueness_search_v2":
+    method = record.get("difficulty_method")
+    if method == "curriculum_empty_cells_v1":
+        curriculum_empty_cells = record.get("curriculum_empty_cells")
+        if (
+            not isinstance(curriculum_empty_cells, int)
+            or isinstance(curriculum_empty_cells, bool)
+            or curriculum_empty_cells != puzzle.count("0")
+        ):
+            raise ValueError(f"Sudoku record {record_id} curriculum_empty_cells does not match its puzzle")
+        _validate_solver_stats(record_id, record, puzzle, stats)
+        return
+    if method != "clue_count_and_uniqueness_search_v2":
         return
 
     expected_clues = {"easy": 40, "medium": 34, "hard": 28}[difficulty]
@@ -104,9 +115,18 @@ def _validate_generated_metadata(
         raise ValueError(f"Sudoku record {record_id} search overhead falls outside v2 difficulty bands")
     if difficulty != expected_difficulty:
         raise ValueError(f"Sudoku record {record_id} difficulty does not match v2 search effort")
+    _validate_solver_stats(record_id, record, puzzle, stats)
+
+
+def _validate_solver_stats(
+    record_id: str,
+    record: dict,
+    puzzle: str,
+    stats: SolveStats,
+) -> None:
     expected_stats = {
         "solver_search_nodes": stats.visited_nodes,
-        "solver_search_overhead": search_overhead,
+        "solver_search_overhead": stats.visited_nodes - (puzzle.count("0") + 1),
         "solver_guesses": stats.guesses,
         "solver_backtracks": stats.backtracks,
     }
