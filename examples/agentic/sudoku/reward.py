@@ -167,6 +167,7 @@ def _episode_reward(
         score -= 0.3 * invalid_rate + 0.15 * redundant_rate + 0.1 * multi_call_rate
     else:
         score = -0.25 + 0.25 * progress
+        score -= 0.1 * (actions_used / max_actions)
         score -= 0.5 * invalid_rate + 0.2 * redundant_rate + 0.1 * multi_call_rate
         if exhausted:
             score -= 0.1

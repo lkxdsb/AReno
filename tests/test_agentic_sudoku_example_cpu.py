@@ -251,10 +251,12 @@ def test_reward_penalizes_repeated_state_actions_and_multi_call_turns():
     ]
 
     distinct = reward.score_episode(source, distinct_calls, messages=normal_messages)
+    short = reward.score_episode(source, distinct_calls[:1], messages=normal_messages[:1])
     repeated = reward.score_episode(source, repeated_calls, messages=normal_messages)
     multi = reward.score_episode(source, distinct_calls, messages=multi_messages)
 
     assert distinct.redundant_actions == 0
+    assert distinct.reward < short.reward
     assert repeated.redundant_actions == 1
     assert repeated.reward < distinct.reward
     assert multi.multi_call_violations == 1

@@ -38,7 +38,7 @@ model requests:
 ```bash
 !python examples/agentic/sudoku/dataset_generator.py \
   --output /kaggle/working/sudoku-train-smoke.jsonl \
-  --count 30 --seed 2026 --split train
+  --count 30 --seed 2026 --split train --max-actions 8
 
 !python examples/agentic/sudoku/dataset_generator.py \
   --output /kaggle/working/sudoku-validation.jsonl \
@@ -81,9 +81,10 @@ Do not continue unless this reports `"ok": true`.
   --tp-size 1 --world-size 1 \
   --batch-size 1 --n-samples 2 --mini-bs 1 \
   --max-running-prompts 2 \
-  --max-new-tokens 64 --max-context-len 16384 \
+  --max-new-tokens 64 --max-context-len 8192 \
   --attn-backend native \
   --max-steps 1 \
+  --save-interval 1 \
   --metrics-log-dir /kaggle/working/metrics-smoke \
   --save-path /kaggle/working/checkpoint-smoke
 ```

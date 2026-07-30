@@ -139,6 +139,8 @@ verify the final board and count correct placements.
   efficiency term.
 - An unfinished trajectory cannot receive a positive reward merely by placing
   a few correct digits and stopping early.
+- Unfinished trajectories pay a small action-cost penalty, so repeatedly
+  inspecting distinct cells is not reward-neutral.
 - Invalid calls, repeated calls against the same board state, and multiple tool
   calls in one assistant turn are penalized.
 - An exhausted unfinished episode receives an additional penalty.
