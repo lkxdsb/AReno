@@ -223,7 +223,13 @@ def test_reward_replay_separates_success_partial_invalid_and_empty_paths():
 def test_reward_loads_through_runtime_file_loader():
     from areno.api.rewards import load_reward_fn
 
-    loaded = load_reward_fn(str(EXAMPLE_DIR / "reward.py"))
+    previous_game = sys.modules.pop("game", None)
+    try:
+        loaded = load_reward_fn(str(EXAMPLE_DIR / "reward.py"))
+        assert "game" not in sys.modules
+    finally:
+        if previous_game is not None:
+            sys.modules["game"] = previous_game
 
     assert callable(loaded)
 

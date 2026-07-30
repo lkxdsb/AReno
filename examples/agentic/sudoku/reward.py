@@ -1,13 +1,39 @@
 """Outcome and process reward for Sudoku agent trajectories."""
 
+import importlib.util
 import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from game import EMPTY, SudokuGame, encode_board, normalize_board  # noqa: E402
+
+def _load_game_module():
+    """Load the sibling module without claiming the process-global name `game`."""
+
+    module_name = "_areno_agentic_sudoku_game"
+    existing = sys.modules.get(module_name)
+    if existing is not None:
+        return existing
+    path = Path(__file__).resolve().with_name("game.py")
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load Sudoku game module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
+    return module
+
+
+_game = _load_game_module()
+EMPTY = _game.EMPTY
+SudokuGame = _game.SudokuGame
+encode_board = _game.encode_board
+normalize_board = _game.normalize_board
 
 
 @dataclass(frozen=True, slots=True)
