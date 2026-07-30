@@ -379,10 +379,30 @@ def test_agent_preserves_tool_order_and_stops_at_budget_without_fabricating_call
     assert json.loads(finish_messages[-2]["content"])["terminal"] is True
     assert finish_messages[-1]["role"] == "user"
 
-    failed = FakeCompletions([response(content="I will not call a tool.")])
+    failed = FakeCompletions(
+        [
+            response(content="I will not call a tool."),
+            response(content="I still will not call a tool."),
+        ]
+    )
     failed_turns = asyncio.run(run_agent._run_episode(item, SimpleNamespace(chat=SimpleNamespace(completions=failed))))
     assert len(failed_turns) == 1
+    assert len(failed.messages) == 2
+    assert "not an executable tool call" in failed.messages[1][-2]["content"]
     assert failed.messages[0][-1]["role"] == "user"
+
+    recovered = FakeCompletions(
+        [
+            response(content="I should inspect."),
+            response(tool_name="inspect_candidates", arguments={"row": 1, "col": 3}),
+            response(content="Episode complete."),
+        ]
+    )
+    recovered_turns = asyncio.run(
+        run_agent._run_episode(item, SimpleNamespace(chat=SimpleNamespace(completions=recovered)))
+    )
+    assert len(recovered_turns) == 2
+    assert recovered_turns[0].response.choices[0].message.tool_calls
 
 
 def test_agent_episode_stops_when_the_environment_reports_solved():

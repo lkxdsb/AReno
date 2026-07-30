@@ -15,6 +15,7 @@ from game import TOOLS, SudokuGame  # noqa: E402
 
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
+MAX_NO_TOOL_RESPONSES = 2
 
 SYSTEM_PROMPT = (
     "You are a careful Sudoku agent. Maintain the board from the complete tool history. "
@@ -54,6 +55,7 @@ async def _run_episode(item, client) -> list[AgentTrajectoryTurn]:
     game = SudokuGame(item.record["puzzle"], max_actions=int(item.record["max_actions"]))
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": item.prompt}]
     turns = []
+    consecutive_no_tool_responses = 0
 
     while not game.terminal:
         turn_messages = [
@@ -70,19 +72,42 @@ async def _run_episode(item, client) -> list[AgentTrajectoryTurn]:
             tool_choice="required",
             stream=False,
         )
-        turns.append(
-            AgentTrajectoryTurn(
-                item=item,
-                messages=turn_messages,
-                response=response,
-                tools=TOOLS,
-                tool_choice="required",
-            )
+        turn = AgentTrajectoryTurn(
+            item=item,
+            messages=turn_messages,
+            response=response,
+            tools=TOOLS,
+            tool_choice="required",
         )
         assistant_message = _assistant_message(response)
         if not assistant_message["tool_calls"]:
-            logger.warning("Sudoku model returned no executable tool call")
-            break
+            consecutive_no_tool_responses += 1
+            logger.warning(
+                "Sudoku model returned no executable tool call retry=%d/%d",
+                consecutive_no_tool_responses,
+                MAX_NO_TOOL_RESPONSES,
+            )
+            messages.extend(
+                [
+                    turn_messages[-1],
+                    assistant_message,
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your response was not an executable tool call. Do not explain or repeat text. "
+                            "Call exactly one of inspect_candidates, place_digit, or undo now."
+                        ),
+                    },
+                ]
+            )
+            if consecutive_no_tool_responses >= MAX_NO_TOOL_RESPONSES:
+                # Preserve one negative trajectory when recovery fails, but do
+                # not train on an earlier malformed response if a retry works.
+                turns.append(turn)
+                break
+            continue
+        consecutive_no_tool_responses = 0
+        turns.append(turn)
         if len(assistant_message["tool_calls"]) > 1:
             logger.warning(
                 "Sudoku model returned %d tool calls in one turn; calls are replayed in order and extras are penalized",
